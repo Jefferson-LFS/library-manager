@@ -45,9 +45,8 @@ public class Main {
 
         UsuarioDAO usuarioDAO = new UsuarioDAO(getConnectionDataBase);
 
-        Boolean isValidCredentials = checkLoginAndPassword(usuarioLogin, usuarioDAO);
-
-        while(!isValidCredentials) {
+        usuarioLogin = usuarioDAO.selectByLoginESenha(usuarioLogin);
+        while(usuarioLogin == null) {
             System.out.println("Usuário ou senha inválidos, preencha novamente!");
 
             System.out.print("login:");
@@ -57,8 +56,7 @@ public class Main {
             password = scanner.nextLine();
 
             usuarioLogin = setUserAndPassword(login, password);
-
-            isValidCredentials = checkLoginAndPassword(usuarioLogin, usuarioDAO);
+            usuarioLogin = usuarioDAO.selectByLoginESenha(usuarioLogin);
         }
 
 
@@ -80,6 +78,7 @@ public class Main {
             }
             ShowAvailableBooks (livroDAO, autorDAO);
             System.out.println("Digite o id do livro que deseja realizar o empréstimo: ");
+            // TODO: Validar o valor do id do livro;
             Long inputIdBook = scanner.nextLong();
             checkoutBook(usuarioLogin, inputIdBook, livroDAO, emprestimoDAO);
             break;
@@ -111,36 +110,34 @@ public class Main {
 
     private static Boolean  checkLoginAndPassword (Usuario usuarioLogin, UsuarioDAO usuarioDAO) throws SQLException {
 
-        if(!usuarioDAO.selectByLoginESenha(usuarioLogin)) {
+        if(usuarioDAO.selectByLoginESenha(usuarioLogin) == null) {
             return false;
         }
         return true;
     }
 
-    private static Boolean checkIfBookExists (Long livroId, LivroDAO livroDAO) throws SQLException {
-
-        if(!(livroDAO.selectById(livroId) == null)) {
-            return false;
-        }
-        return true;
+    private static Boolean checkIfBookIsNotExists (Long livroId, LivroDAO livroDAO) throws SQLException {
+        return livroDAO.selectById(livroId) == null;
 
     }
 
     private static void checkoutBook (Usuario usuarioLogin, Long livroId, LivroDAO livroDAO, EmprestimoDAO emprestimoDAO) throws SQLException {
 
-        Boolean bookExists =  checkIfBookExists(livroId, livroDAO);
+        Boolean bookIsNotExists =  checkIfBookIsNotExists(livroId, livroDAO);
 
-        if (!bookExists){
+        if (!bookIsNotExists){
             System.out.println("Id do livro não encontrado! ");
+            return;
         }
-        emprestimoDAO.insert(
-                new Emprestimo(livroId, usuarioLogin.getId())
-        );
+        if (usuarioLogin == null || usuarioLogin.getId() == null) {
+            System.out.println("Usuário não autenticado corretamente.");
+            return;
+        }
+        emprestimoDAO.insert(new Emprestimo(livroId, usuarioLogin.getId()));
+        livroDAO.updateByIdLivroDisponivel(false, livroId);
         System.out.println("Emprestimo efetuado com sucesso! ");
 
-
     }
-
     private static Connection requestConnectionDataBase (Connection conexao)  {
         try {
                 conexao = connectToDataBase(conexao);

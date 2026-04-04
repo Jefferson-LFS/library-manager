@@ -19,6 +19,8 @@ public class LivroDAO implements HelperDAO<Livro> {
 
     private static final String INSERT_LIVRO_AUTORES = "INSERT INTO livros_autores (livro_id, autor_id) VALUES (?, ?)";
 
+    private static final String UPDATE_BY_ID_LIVRO_DISPONIVEL = "UPDATE livros SET disponivel = ? WHERE id = ?";
+
     private static final String SELECT_ALL_BOOKS_AVAILABLE = "SELECT\n" +
             "    l.id,\n" +
             "    l.titulo,\n" +
@@ -35,6 +37,7 @@ public class LivroDAO implements HelperDAO<Livro> {
     private final PreparedStatement psSelectById;
     private final PreparedStatement psSelectAllBooksAvailble;
     private final PreparedStatement psInsertLivro;
+    private final PreparedStatement psUpdateByIdLivroDisponivel;
 
 
     public LivroDAO(Connection conexao) throws SQLException {
@@ -42,6 +45,7 @@ public class LivroDAO implements HelperDAO<Livro> {
         psSelectById = this.conexao.prepareStatement(SELECT_BY_ID);
         psSelectAllBooksAvailble = this.conexao.prepareStatement(SELECT_ALL_BOOKS_AVAILABLE);
         psInsertLivro = this.conexao.prepareStatement(INSERT_LIVRO);
+        psUpdateByIdLivroDisponivel = this.conexao.prepareStatement(UPDATE_BY_ID_LIVRO_DISPONIVEL);
 
     }
 
@@ -67,6 +71,13 @@ public class LivroDAO implements HelperDAO<Livro> {
     @Override
     public void update(Livro livro) throws SQLException {
 
+    }
+
+
+    public void updateByIdLivroDisponivel(Boolean disponivel, Long id) throws SQLException {
+        psUpdateByIdLivroDisponivel.setBoolean(1, disponivel);
+        psUpdateByIdLivroDisponivel.setLong(2, id);
+        psUpdateByIdLivroDisponivel.executeUpdate();
     }
 
     @Override

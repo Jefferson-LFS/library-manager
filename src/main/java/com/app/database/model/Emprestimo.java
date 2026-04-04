@@ -9,10 +9,15 @@ public class Emprestimo {
     private LocalDateTime dataEmprestimo;
     private LocalDateTime dataDevolucao;
 
-    public Emprestimo(long id, long livroId, long usuariod) {
+    public Emprestimo(long id, long livroId, long usuarioId) {
+        this.id = id;
+        this.livroId = livroId;
+        this.usuarioId = usuarioId;
     }
 
-    public Emprestimo(long livroId, long usuariod) {
+    public Emprestimo(long livroId, long usuarioId) {
+        this.livroId = livroId;
+        this.usuarioId = usuarioId;
     }
 
     public Emprestimo() {
