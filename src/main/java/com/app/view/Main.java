@@ -1,178 +1,100 @@
 package com.app.view;
 
 import com.app.database.ConnectionFactory;
-import com.app.database.dao.*;
-import com.app.database.model.Autor;
-import com.app.database.model.Emprestimo;
+import com.app.database.dao.AutorDAO;
+import com.app.database.dao.EmprestimoDAO;
+import com.app.database.dao.LivroDAO;
+import com.app.database.dao.UsuarioDAO;
 import com.app.database.model.Livro;
 import com.app.database.model.Usuario;
-import com.app.util.HashUtils;
+import com.app.service.LibraryService;
 
-import javax.swing.*;
-import java.sql.*;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.Scanner;
-
 import java.util.logging.Logger;
 
 public class Main {
 
+    private static final Logger LOGGER = Logger.getLogger(Main.class.getName());
 
-    private static final Logger LOGGER =
-            Logger.getLogger(Main.class.getName());
-
-    public static void main(String[] args) throws SQLException {
-
+    public static void main(String[] args) {
 
         Scanner scanner = new Scanner(System.in);
-        Connection conexao = null;
 
-        Connection getConnectionDataBase = requestConnectionDataBase(conexao);
+        try {
+            Connection conexao = ConnectionFactory.getConnection();
+            LOGGER.info("Conexão com o banco de dados PostgreSQL estabelecida com sucesso!");
 
-        Boolean solicitouEncerramentoDoProgama = false;
+            LibraryService service = new LibraryService(
+                    new UsuarioDAO(conexao),
+                    new LivroDAO(conexao),
+                    new AutorDAO(conexao),
+                    new EmprestimoDAO(conexao)
+            );
 
-        System.out.println("Informe seu login e senha: ");
-
-        System.out.print("login:");
-        String login = scanner.nextLine();
-
-        System.out.print("senha:");
-        String password = scanner.nextLine();
-
-        Usuario usuarioLogin = setUserAndPassword(login, password);
-
-        UsuarioDAO usuarioDAO = new UsuarioDAO(getConnectionDataBase);
-
-        usuarioLogin = usuarioDAO.selectByLoginESenha(usuarioLogin);
-        while(usuarioLogin == null) {
-            System.out.println("Usuário ou senha inválidos, preencha novamente!");
+            System.out.println("Informe seu login e senha: ");
 
             System.out.print("login:");
-            login = scanner.nextLine();
+            String login = scanner.nextLine();
 
             System.out.print("senha:");
-            password = scanner.nextLine();
+            String password = scanner.nextLine();
 
-            usuarioLogin = setUserAndPassword(login, password);
-            usuarioLogin = usuarioDAO.selectByLoginESenha(usuarioLogin);
-        }
+            Usuario usuarioLogin = service.autenticar(login, password);
+            while (usuarioLogin == null) {
+                System.out.println("Usuário ou senha inválidos, preencha novamente!");
 
+                System.out.print("login:");
+                login = scanner.nextLine();
 
-        System.out.println("##### Bem-vindo Library Manager! #### ");
+                System.out.print("senha:");
+                password = scanner.nextLine();
 
-        System.out.println("Gostaria de ver os livros disponíveis? Digite 'SIM', ou 'NÃO' para sair do programa: ");
+                usuarioLogin = service.autenticar(login, password);
+            }
 
-        LivroDAO livroDAO = new LivroDAO(getConnectionDataBase);
-        AutorDAO autorDAO = new AutorDAO(getConnectionDataBase);
-        EmprestimoDAO emprestimoDAO = new EmprestimoDAO(getConnectionDataBase);
+            System.out.println("##### Bem-vindo Library Manager! ####");
+            System.out.println("Gostaria de ver os livros disponíveis? Digite 'SIM', ou 'NÃO' para sair do programa: ");
 
-        while (!solicitouEncerramentoDoProgama) {
+            Boolean solicitouEncerramento = false;
 
-            String input = scanner.nextLine();
-            solicitouEncerramentoDoProgama = input.equals("NÃO") ?
-                    solicitouEncerramentoDoProgama = true : solicitouEncerramentoDoProgama;
-            if (solicitouEncerramentoDoProgama) {
+            while (!solicitouEncerramento) {
+                String input = scanner.nextLine();
+
+                if (input.equals("NÃO")) {
+                    solicitouEncerramento = true;
+                    break;
+                }
+
+                System.out.println("| ID | TITULO | AUTOR |");
+                for (Livro livro : service.listarLivrosDisponiveis()) {
+                    System.out.printf("[ %d; '%s'; '%s']%n",
+                            livro.getId(),
+                            livro.getTitulo(),
+                            service.buscarNomeAutor(livro.getAutorId()));
+                }
+
+                System.out.println("Digite o id do livro que deseja realizar o empréstimo: ");
+                // TODO: Validar o valor do id do livro
+                Long inputIdBook = scanner.nextLong();
+
+                try {
+                    service.realizarEmprestimo(usuarioLogin, inputIdBook);
+                    System.out.println("Emprestimo efetuado com sucesso!");
+                } catch (IllegalArgumentException ex) {
+                    System.out.println(ex.getMessage());
+                }
+
                 break;
             }
-            ShowAvailableBooks (livroDAO, autorDAO);
-            System.out.println("Digite o id do livro que deseja realizar o empréstimo: ");
-            // TODO: Validar o valor do id do livro;
-            Long inputIdBook = scanner.nextLong();
-            checkoutBook(usuarioLogin, inputIdBook, livroDAO, emprestimoDAO);
-            break;
-        }
-
-    }
-
-    private static Connection connectToDataBase (Connection conexao) throws SQLException {
-        conexao = ConnectionFactory.getConnection(
-                "192.168.1.71",
-                5432,
-                "livraria",
-                "postgres",
-                "Mudar@123");
-
-        return conexao;
-
-    }
-
-    private static Usuario setUserAndPassword (String login, String password) {
-        Usuario user = new Usuario();
-
-        user.setLogin(login);
-        user.setSenha(HashUtils.criarMD5(password));
-
-        return user;
-
-    }
-
-    private static Boolean  checkLoginAndPassword (Usuario usuarioLogin, UsuarioDAO usuarioDAO) throws SQLException {
-
-        if(usuarioDAO.selectByLoginESenha(usuarioLogin) == null) {
-            return false;
-        }
-        return true;
-    }
-
-    private static Boolean checkIfBookIsNotExists (Long livroId, LivroDAO livroDAO) throws SQLException {
-        return livroDAO.selectById(livroId) == null;
-
-    }
-
-    private static void checkoutBook (Usuario usuarioLogin, Long livroId, LivroDAO livroDAO, EmprestimoDAO emprestimoDAO) throws SQLException {
-
-        Boolean bookIsNotExists =  checkIfBookIsNotExists(livroId, livroDAO);
-
-        if (!bookIsNotExists){
-            System.out.println("Id do livro não encontrado! ");
-            return;
-        }
-        if (usuarioLogin == null || usuarioLogin.getId() == null) {
-            System.out.println("Usuário não autenticado corretamente.");
-            return;
-        }
-        emprestimoDAO.insert(new Emprestimo(livroId, usuarioLogin.getId()));
-        livroDAO.updateByIdLivroDisponivel(false, livroId);
-        System.out.println("Emprestimo efetuado com sucesso! ");
-
-    }
-    private static Connection requestConnectionDataBase (Connection conexao)  {
-        try {
-                conexao = connectToDataBase(conexao);
-                LOGGER.info("Conexão com o banco de dados PostgreSQL estabelecida com sucesso!");
-                return conexao;
 
         } catch (SQLException ex) {
-                String message = "Não foi possivel conectar com o banco de dados: ";
-                logError(message, ex);
+            System.out.println("Erro ao acessar o banco de dados. Tente novamente.");
+            LOGGER.severe("Erro de banco de dados: " + ex.getMessage());
+        } catch (RuntimeException ex) {
+            System.out.println("Não foi possível conectar com o banco de dados. Verifique as configurações.");
+            LOGGER.severe("Erro de conexão: " + ex.getMessage());
         }
-
-        return null;
-    }
-
-
-    private static void ShowAvailableBooks (LivroDAO livroDAO, AutorDAO autorDAO) throws SQLException {
-        System.out.println("| ID | TITULO | AUTOR |");
-        for (Livro livro : livroDAO.selectAll()) {
-            System.out.printf(
-                    """
-                    [ %d; '%s'; '%s']
-                    """,
-                    livro.getId(),
-                    livro.getTitulo(),
-                    autorDAO.selectById(livro.getAutorId()).getNome()
-            );
-        }
-
-    }
-
-    private static void logError(Exception e){
-            LOGGER.severe(e.getMessage());
-    }
-
-    private static void logError(String message, Exception e){
-        LOGGER.severe(message + e.getMessage());
     }
 }
