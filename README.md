@@ -63,11 +63,18 @@ Com base no estado atual do projeto, as seguintes funcionalidades já estão pre
 - Separação entre:
     - `model`
     - `dao`
+    - `service`
     - `view`
     - `util`
 - Uso de classes de domínio para as entidades principais
 - Camada de persistência com DAOs
+- Camada de serviço (`LibraryService`) isolando a lógica de negócio da interface CLI
 - Conexão com PostgreSQL via `ConnectionFactory`
+- Configurações de banco externalizadas em `database.properties`
+
+### Testes
+- Testes automatizados com **JUnit 5** e **Mockito**
+- Cobertura do fluxo de autenticação e empréstimo via `LibraryServiceTest`
 
 ---
 
@@ -93,14 +100,11 @@ Abaixo está uma visão organizada do que ainda falta evoluir no sistema.
 - Regras por perfil de acesso
 
 ### Melhorias técnicas pendentes
-- Externalizar configurações do banco de dados
-- Remover credenciais sensíveis do código
-- Aprimorar tratamento de exceções
 - Corrigir inconsistências de modelagem, se necessário
-- Adicionar testes automatizados
 - Melhorar logs e rastreabilidade
 - Revisar fluxo de interação com o usuário
 - Substituir MD5 por um algoritmo mais seguro para senha
+- Ampliar cobertura de testes (DAOs, modelos)
 
 ---
 
@@ -111,30 +115,44 @@ Abaixo está uma visão organizada do que ainda falta evoluir no sistema.
 - **JDBC**
 - **PostgreSQL**
 - **Java SE**
+- **JUnit 5** — testes automatizados
+- **Mockito** — mock de dependências nos testes
 
 ---
 
 ## Estrutura do projeto
 
 ```
-src/main/java/com/app/
-├── database/
-│   ├── ConnectionFactory.java       # Factory de conexão com o PostgreSQL via JDBC
-│   ├── dao/
-│   │   ├── HelperDAO.java           # Interface genérica com operações CRUD padrão
-│   │   ├── AutorDAO.java            # DAO para a entidade Autor
-│   │   ├── LivroDAO.java            # DAO para a entidade Livro
-│   │   ├── EmprestimoDAO.java       # DAO para a entidade Emprestimo
-│   │   └── UsuarioDAO.java          # DAO para a entidade Usuario (inclui autenticação)
-│   └── model/
-│       ├── Autor.java               # Entidade: autor do livro
-│       ├── Emprestimo.java          # Entidade: registro de empréstimo
-│       ├── Livro.java               # Entidade: livro do acervo
-│       └── Usuario.java             # Entidade: usuário do sistema
-├── util/
-│   └── HashUtils.java               # Utilitário de hash MD5 para senhas
-└── view/
-    └── Main.java                    # Ponto de entrada e interface CLI da aplicação
+src/
+├── main/
+│   ├── java/com/app/
+│   │   ├── database/
+│   │   │   ├── ConnectionFactory.java       # Factory de conexão com o PostgreSQL via JDBC
+│   │   │   ├── dao/
+│   │   │   │   ├── HelperDAO.java           # Interface genérica com operações CRUD padrão
+│   │   │   │   ├── AutorDAO.java            # DAO para a entidade Autor
+│   │   │   │   ├── LivroDAO.java            # DAO para a entidade Livro
+│   │   │   │   ├── EmprestimoDAO.java       # DAO para a entidade Emprestimo
+│   │   │   │   └── UsuarioDAO.java          # DAO para a entidade Usuario (inclui autenticação)
+│   │   │   └── model/
+│   │   │       ├── Autor.java               # Entidade: autor do livro
+│   │   │       ├── Emprestimo.java          # Entidade: registro de empréstimo
+│   │   │       ├── Livro.java               # Entidade: livro do acervo
+│   │   │       └── Usuario.java             # Entidade: usuário do sistema
+│   │   ├── service/
+│   │   │   └── LibraryService.java          # Lógica de negócio: autenticação e empréstimo
+│   │   ├── util/
+│   │   │   ├── DatabaseConfig.java          # Carrega configurações do banco via .properties
+│   │   │   └── HashUtils.java               # Utilitário de hash MD5 para senhas
+│   │   └── view/
+│   │       └── Main.java                    # Ponto de entrada e interface CLI da aplicação
+│   └── resources/
+│       ├── database.properties              # Credenciais do banco (ignorado pelo git)
+│       └── database.properties.example     # Template de configuração (sem credenciais reais)
+└── test/
+    └── java/com/app/
+        └── service/
+            └── LibraryServiceTest.java      # Testes do fluxo de autenticação e empréstimo
 ```
 
 ### Descrição das camadas
@@ -144,7 +162,8 @@ src/main/java/com/app/
 | `model`     | `com.app.database.model`  | Classes de domínio que representam as entidades do sistema    |
 | `dao`       | `com.app.database.dao`    | Acesso ao banco de dados; implementam a interface `HelperDAO` |
 | `database`  | `com.app.database`        | Fábrica de conexão com o PostgreSQL                          |
-| `util`      | `com.app.util`            | Utilitários gerais (ex.: geração de hash para senhas)         |
+| `service`   | `com.app.service`         | Lógica de negócio desacoplada da interface CLI                |
+| `util`      | `com.app.util`            | Utilitários gerais (hash de senhas, carregamento de configs)  |
 | `view`      | `com.app.view`            | Interface de linha de comando e fluxo principal da aplicação  |
 
 ---
@@ -170,15 +189,17 @@ Antes de executar o projeto, certifique-se de ter instalado:
 
 2. **Configure o banco de dados** (veja a seção [Banco de dados](#banco-de-dados)).
 
-3. **Ajuste as credenciais de conexão** em `Main.java`, método `connectToDataBase()`:
-   ```java
-   conexao = ConnectionFactory.getConnection(
-       "SEU_IP",   // endereço do servidor PostgreSQL
-       5432,       // porta
-       "livraria", // nome do banco
-       "usuario",  // usuário do banco
-       "senha"     // senha do banco
-   );
+3. **Configure as credenciais de conexão** copiando o arquivo de exemplo e preenchendo com seus dados:
+   ```bash
+   cp src/main/resources/database.properties.example src/main/resources/database.properties
+   ```
+   Edite `database.properties`:
+   ```properties
+   db.host=SEU_IP
+   db.port=5432
+   db.name=livraria
+   db.user=seu_usuario
+   db.password=sua_senha
    ```
 
 4. **Compile e execute com Maven:**
@@ -193,7 +214,12 @@ Antes de executar o projeto, certifique-se de ter instalado:
    java -cp target/library-manager-1.0-SNAPSHOT.jar com.app.view.Main
    ```
 
-5. **Interação via terminal:**
+5. **Execute os testes:**
+   ```bash
+   mvn test
+   ```
+
+6. **Interação via terminal:**
    - Informe seu login e senha cadastrados no banco.
    - Visualize os livros disponíveis.
    - Informe o ID do livro para realizar o empréstimo.
@@ -243,7 +269,7 @@ CREATE TABLE emprestimos (
 );
 ```
 
-> **Atenção:** as credenciais de conexão estão atualmente embutidas no código (`Main.java`). Externalizar essas configurações é uma das [melhorias técnicas pendentes](#melhorias-técnicas-pendentes).
+> As credenciais de conexão são carregadas via `src/main/resources/database.properties`, que é ignorado pelo git. Copie `database.properties.example` e preencha com suas configurações antes de executar.
 
 ---
 
@@ -252,22 +278,23 @@ CREATE TABLE emprestimos (
 - **Padrão DAO** — separação entre lógica de negócio e acesso a dados.
 - **Interface genérica `HelperDAO<T>`** — contrato único de CRUD para todos os DAOs.
 - **Factory pattern** — `ConnectionFactory` centraliza a criação de conexões JDBC.
-- **Arquitetura em camadas** — `model`, `dao`, `util` e `view` com responsabilidades bem definidas.
+- **Arquitetura em camadas** — `model`, `dao`, `service`, `util` e `view` com responsabilidades bem definidas.
+- **Camada de serviço** — `LibraryService` isola a lógica de negócio da interface CLI, permitindo testes sem I/O.
+- **Configuração externalizada** — credenciais do banco carregadas via `database.properties`, sem hardcode no código.
 - **Hash de senha** — a senha nunca é comparada em texto puro; é convertida para MD5 antes da validação.
 - **Logger nativo Java** — uso de `java.util.logging.Logger` para registro de erros e eventos.
+- **Testes automatizados** — JUnit 5 + Mockito cobrindo autenticação e empréstimo via `LibraryServiceTest`.
 
 ---
 
 ## Melhorias futuras
 
-- Externalizar configurações do banco de dados para arquivo `.properties` ou variáveis de ambiente.
 - Substituir MD5 por **BCrypt** ou outro algoritmo seguro para hash de senhas.
 - Implementar controle de perfis de acesso (administrador, bibliotecário, leitor).
 - Adicionar fluxo completo de devolução de livros com atualização de disponibilidade.
 - Criar histórico de empréstimos por usuário.
-- Adicionar testes unitários e de integração.
+- Ampliar cobertura de testes (DAOs, modelos, integração com banco).
 - Evoluir a interface para uma aplicação web ou desktop.
-- Aprimorar o tratamento de exceções com mensagens mais informativas.
 
 ---
 

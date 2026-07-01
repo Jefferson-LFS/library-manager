@@ -1,7 +1,6 @@
 package com.app.database.dao;
 
 import com.app.database.model.Emprestimo;
-import com.app.database.model.Livro;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -19,7 +18,7 @@ public class EmprestimoDAO implements HelperDAO<Emprestimo> {
 
     private static final String SELECT_BY_ID = "SELECT * FROM usuarios WHERE id = ?";
 
-    private static final String INSERT_EMPRESTIMO = "INSERT INTO emprestimo (usuario_id, autor_id) VALUES (?, ?)";
+    private static final String INSERT_EMPRESTIMO = "INSERT INTO emprestimos (livro_id, usuario_id) VALUES (?, ?)";
     
     private final PreparedStatement psSelectById;
     private final PreparedStatement psInsertEmprestimo;
@@ -83,8 +82,8 @@ public class EmprestimoDAO implements HelperDAO<Emprestimo> {
     private Emprestimo mapRow(ResultSet rs) throws SQLException {
         return new Emprestimo(
                 rs.getLong("id"),
-                rs.getLong("livroId"),
-                rs.getLong("usuariod")
+                rs.getLong("livro_id"),
+                rs.getLong("usuario_id")
         );
     }
 
