@@ -7,6 +7,8 @@ import com.app.database.dao.LivroDAO;
 import com.app.database.dao.UsuarioDAO;
 import com.app.database.model.Livro;
 import com.app.database.model.Usuario;
+import com.app.exceptions.BookNotFoundException;
+import com.app.exceptions.BookUnavailableException;
 import com.app.service.LibraryService;
 
 import java.sql.Connection;
@@ -82,7 +84,7 @@ public class Main {
                 try {
                     service.realizarEmprestimo(usuarioLogin, inputIdBook);
                     System.out.println("Emprestimo efetuado com sucesso!");
-                } catch (IllegalArgumentException ex) {
+                } catch (BookNotFoundException | BookUnavailableException ex) {
                     System.out.println(ex.getMessage());
                 }
 
@@ -93,8 +95,8 @@ public class Main {
             System.out.println("Erro ao acessar o banco de dados. Tente novamente.");
             LOGGER.severe("Erro de banco de dados: " + ex.getMessage());
         } catch (RuntimeException ex) {
-            System.out.println("Não foi possível conectar com o banco de dados. Verifique as configurações.");
-            LOGGER.severe("Erro de conexão: " + ex.getMessage());
+            System.out.println("Erro inesperado. Tente novamente.");
+            LOGGER.severe("Erro inesperado: " + ex.getMessage());
         }
     }
 }
