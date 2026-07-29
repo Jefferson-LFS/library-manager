@@ -8,6 +8,8 @@ import com.app.database.model.Autor;
 import com.app.database.model.Emprestimo;
 import com.app.database.model.Livro;
 import com.app.database.model.Usuario;
+import com.app.exceptions.AuthorNotFoundException;
+import com.app.exceptions.BookNotFoundException;
 import com.app.util.HashUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -106,9 +108,10 @@ class LibraryServiceTest {
     void buscarNomeAutor_deveria_retornar_desconhecido_quando_autor_nao_existe() throws SQLException {
         when(autorDAOMock.selectById(anyLong())).thenReturn(null);
 
-        String nome = service.buscarNomeAutor(99L);
+        AuthorNotFoundException ex = assertThrows(AuthorNotFoundException.class,
+                () -> service.buscarNomeAutor(99L));
 
-        assertEquals("Autor desconhecido", nome);
+        assertEquals("Autor não encontrado! ID: 99", ex.getMessage());
     }
 
     // ─── realizarEmprestimo ────────────────────────────────────────────────────
@@ -129,10 +132,10 @@ class LibraryServiceTest {
         Usuario usuario = new Usuario(1L, "Joao", "joao", "leitor", true);
         when(livroDAOMock.selectById(99L)).thenReturn(null);
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+        BookNotFoundException ex = assertThrows(BookNotFoundException.class,
                 () -> service.realizarEmprestimo(usuario, 99L));
 
-        assertEquals("Livro não encontrado: 99", ex.getMessage());
+        assertEquals("Livro não encontrado! ID: 99", ex.getMessage());
     }
 
     @Test
@@ -140,7 +143,7 @@ class LibraryServiceTest {
         Usuario usuario = new Usuario(1L, "Joao", "joao", "leitor", true);
         when(livroDAOMock.selectById(anyLong())).thenReturn(null);
 
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(BookNotFoundException.class,
                 () -> service.realizarEmprestimo(usuario, 99L));
 
         verify(emprestimoDAOMock, never()).insert(any());

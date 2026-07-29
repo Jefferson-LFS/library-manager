@@ -8,6 +8,8 @@ import com.app.database.model.Autor;
 import com.app.database.model.Emprestimo;
 import com.app.database.model.Livro;
 import com.app.database.model.Usuario;
+import com.app.exceptions.AuthorNotFoundException;
+import com.app.exceptions.BookNotFoundException;
 import com.app.util.HashUtils;
 
 import java.sql.SQLException;
@@ -40,12 +42,15 @@ public class LibraryService {
 
     public String buscarNomeAutor(Long autorId) throws SQLException {
         Autor autor = autorDAO.selectById(autorId);
-        return autor != null ? autor.getNome() : "Autor desconhecido";
+        if (autor == null) {
+            throw new AuthorNotFoundException("Autor não encontrado! ID: " + autorId);
+        }
+        return autor.getNome();
     }
 
     public void realizarEmprestimo(Usuario usuario, Long livroId) throws SQLException {
         if (livroDAO.selectById(livroId) == null) {
-            throw new IllegalArgumentException("Livro não encontrado: " + livroId);
+            throw new BookNotFoundException("Livro não encontrado! ID: " + livroId);
         }
         emprestimoDAO.insert(new Emprestimo(livroId, usuario.getId()));
         livroDAO.updateByIdLivroDisponivel(false, livroId);
