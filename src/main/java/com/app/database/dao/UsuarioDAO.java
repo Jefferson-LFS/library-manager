@@ -57,15 +57,6 @@ public class UsuarioDAO implements HelperDAO<Usuario> {
         psInsertUsuario.executeUpdate();
     }
 
-//    public boolean selectByLoginESenha(Usuario usuario) throws SQLException {
-//
-//        psSelectByLoginESenha.setString(1, usuario.getLogin());
-//        psSelectByLoginESenha.setString(2, usuario.getSenha());
-//        ResultSet resultado = psSelectByLoginESenha.executeQuery();
-//
-//        return resultado != null && resultado.next();
-//    }
-
     public Usuario selectByLoginESenha(Usuario usuario) throws SQLException {
 
         psSelectByLoginESenha.setString(1, usuario.getLogin());
